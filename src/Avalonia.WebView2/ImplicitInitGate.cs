@@ -1,4 +1,4 @@
-namespace Avalonia.Controls;
+namespace Avalonia.WebView;
 
 /// <summary>
 /// Tracks the conditions which block implicit initialization and whether it has been requested or not.

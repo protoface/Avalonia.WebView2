@@ -1,4 +1,4 @@
-namespace Avalonia.Controls;
+namespace Avalonia.WebView;
 
 /// <summary>
 /// This class is a bundle of the most common parameters used to create <see cref="CoreWebView2Environment" /> and <see cref="CoreWebView2Controller" /> instances.
@@ -16,9 +16,9 @@ public partial class CoreWebView2CreationProperties : AvaloniaObject
 {
     static CoreWebView2CreationProperties()
     {
-        BrowserExecutableFolderProperty.Changed.Subscribe(EnvironmentPropertyChanged);
-        UserDataFolderProperty.Changed.Subscribe(EnvironmentPropertyChanged);
-        LanguageProperty.Changed.Subscribe(EnvironmentPropertyChanged);
+        BrowserExecutableFolderProperty.Changed.AddClassHandler<CoreWebView2CreationProperties>((_, args) => EnvironmentPropertyChanged(args));
+        UserDataFolderProperty.Changed.AddClassHandler<CoreWebView2CreationProperties>((_, args) => EnvironmentPropertyChanged(args));
+        LanguageProperty.Changed.AddClassHandler<CoreWebView2CreationProperties>((_, args) => EnvironmentPropertyChanged(args));
     }
 
     /// <summary>
@@ -95,7 +95,7 @@ public partial class CoreWebView2CreationProperties : AvaloniaObject
         set => SetValue(IsInPrivateModeEnabledProperty, value);
     }
 
-    static void EnvironmentPropertyChanged(AvaloniaPropertyChangedEventArgs<string> e)
+    static void EnvironmentPropertyChanged(AvaloniaPropertyChangedEventArgs e)
     {
 #if !DISABLE_WEBVIEW2_CORE
         ((CoreWebView2CreationProperties)e.Sender)._task = null;

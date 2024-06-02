@@ -1,4 +1,4 @@
-namespace Avalonia.Controls;
+namespace Avalonia.WebView;
 
 partial class WebView2
 {

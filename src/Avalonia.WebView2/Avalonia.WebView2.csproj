@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>netstandard2.0;net461;netcoreapp3.0;net7.0;net7.0-windows;net6.0;net6.0-windows</TargetFrameworks>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<TargetFrameworks>net8.0;net8.0-windows</TargetFrameworks>
+		<!--<AllowUnsafeBlocks>true</AllowUnsafeBlocks>-->
 		<RootNamespace>Avalonia.Controls</RootNamespace>
 		<PackageId>WebView2.Avalonia</PackageId>
 		<Description>
@@ -21,6 +21,7 @@
 		<PackageReference Include="Avalonia" />
 		<PackageReference Include="WebView2.NativeAssets.Win32" />
 	</ItemGroup>
+
 
 	<Import Project="..\GeneratePackage.props" />
 </Project>

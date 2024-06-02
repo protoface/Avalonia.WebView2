@@ -1,37 +1,37 @@
 // MIT License Copyright(c) 2020 CefNet
 // https://github.com/CefNet/CefNet/blob/103.0.22181.155/CefNet.Avalonia/Internal/WindowsHwndSource.cs
 
-namespace CefNet.Internal;
+namespace Avalonia.WebView.BCL;
 
-internal delegate IntPtr WindowsWindowProcDelegate(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled);
+internal delegate nint WindowsWindowProcDelegate(nint hwnd, int message, nint wParam, nint lParam, ref bool handled);
 
 internal sealed class WindowsHwndSource : CriticalFinalizerObject, IDisposable
 {
-    delegate IntPtr WindowProc(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam);
+    delegate nint WindowProc(nint hwnd, int message, nint wParam, nint lParam);
 
     bool _disposed;
-    IntPtr hWndProcHook;
+    nint hWndProcHook;
     readonly WindowProc fnWndProcHook;
 
-    public static WindowsHwndSource FromHwnd(IntPtr hwnd)
+    public static WindowsHwndSource FromHwnd(nint hwnd)
     {
         const int GWLP_WNDPROC = -4;
 
-        uint tid = NativeMethods.GetWindowThreadProcessId(hwnd, IntPtr.Zero);
+        var tid = NativeMethods.GetWindowThreadProcessId(hwnd, nint.Zero);
         if (tid == 0)
             throw new Win32Exception(Marshal.GetLastWin32Error());
 
         var source = new WindowsHwndSource(hwnd);
         source.hWndProcHook = NativeMethods.SetWindowLong(hwnd, GWLP_WNDPROC, Marshal.GetFunctionPointerForDelegate(source.fnWndProcHook));
-        if (source.hWndProcHook == IntPtr.Zero)
+        if (source.hWndProcHook == nint.Zero)
             throw new Win32Exception(Marshal.GetLastWin32Error());
 
         return source;
     }
 
-    WindowsHwndSource(IntPtr hwnd)
+    WindowsHwndSource(nint hwnd)
     {
-        hWndProcHook = IntPtr.Zero;
+        hWndProcHook = nint.Zero;
         Handle = hwnd;
         fnWndProcHook = new WindowProc(WndProcHook);
     }
@@ -46,7 +46,7 @@ internal sealed class WindowsHwndSource : CriticalFinalizerObject, IDisposable
         if (_disposed)
             return;
 
-        if (hWndProcHook != IntPtr.Zero)
+        if (hWndProcHook != nint.Zero)
         {
             const int GWLP_WNDPROC = -4;
             NativeMethods.SetWindowLong(Handle, GWLP_WNDPROC, hWndProcHook);
@@ -60,17 +60,17 @@ internal sealed class WindowsHwndSource : CriticalFinalizerObject, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    public IntPtr Handle { get; }
+    public nint Handle { get; }
 
     public WindowsWindowProcDelegate? WndProcCallback { get; set; }
 
-    IntPtr WndProcHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam)
+    nint WndProcHook(nint hwnd, int msg, nint wParam, nint lParam)
     {
-        IntPtr retval = IntPtr.Zero;
+        var retval = nint.Zero;
         var wndproc = WndProcCallback;
         if (wndproc != null)
         {
-            bool handled = false;
+            var handled = false;
             retval = wndproc(hwnd, msg, wParam, lParam, ref handled);
             if (handled)
                 return retval;

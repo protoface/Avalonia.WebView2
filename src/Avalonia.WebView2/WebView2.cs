@@ -1,12 +1,14 @@
+using Avalonia.WebView.BCL;
+using System;
 using WebView2BaseType = Avalonia.Controls.Shapes.Rectangle;
 
-namespace Avalonia.Controls;
+namespace Avalonia.WebView;
 
 /// <summary>
 /// The Microsoft Edge WebView2 control allows you to embed web technologies (HTML, CSS, and JavaScript) in your native apps. The WebView2 control uses Microsoft Edge as the rendering engine to display the web content in native apps.
 /// With WebView2, you can embed web code in different parts of your native app, or build all of the native app within a single WebView2 instance.
 /// </summary>
-public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize, IDisposable
+public partial class WebView2 : WebView2BaseType, ISupportInitialize, IDisposable
 {
     public static bool IsSupported { get; private set; }
 
@@ -14,7 +16,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
 
     public static void RefreshIsSupported()
     {
-#if !DISABLE_WEBVIEW2_CORE
 #if !WINDOWS
         if (OperatingSystem.IsWindows())
 #endif
@@ -32,7 +33,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
                 // at Microsoft.Web.WebView2.Core.CoreWebView2Environment.CreateAsync(String browserExecutableFolder, String userDataFolder, CoreWebView2EnvironmentOptions options)
             }
         }
-#endif
     }
 
     static WebView2()
@@ -47,31 +47,22 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
             return;
         }
 
-        this.GetPropertyChangedObservable(IsVisibleProperty).Subscribe(IsVisibleChanged);
-        this.GetPropertyChangedObservable(BoundsProperty).Subscribe(OnBoundsChanged);
+        this.GetPropertyChangedObservable(IsVisibleProperty).AddClassHandler<WebView2>((target, args) => target.IsVisibleChanged(args));
+        this.GetPropertyChangedObservable(BoundsProperty).AddClassHandler<WebView2>((target, args) => target.OnBoundsChanged(args));
 
         DefaultBackgroundColor = _defaultBackgroundColorDefaultValue;
     }
 
     protected Screen? Screen
     {
-        get
-        {
-            var window = Window;
-            if (window != null)
-            {
-                var screen = window.Screens.ScreenFromWindow(window.PlatformImpl);
-                return screen;
-            }
-            return null;
-        }
+        get => Window?.Screens.ScreenFromWindow(Window);
     }
 
     protected int ToSize(double d, Screen? screen)
     {
         if (screen != null)
         {
-            d *= screen.PixelDensity;
+            d *= screen.Scaling;
         }
         if (double.IsNaN(d) || d <= 0D) return 0;
         return Convert.ToInt32(Math.Ceiling(d));
@@ -80,11 +71,10 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     protected Rectangle GetBounds()
     {
         var bounds = base.Bounds;
-        var screen = Screen;
-        int x = ToSize(bounds.X, screen);
-        int y = ToSize(bounds.Y, screen);
-        int w = ToSize(bounds.Width, screen);
-        int h = ToSize(bounds.Height, screen);
+        int x = ToSize(bounds.X, Screen);
+        int y = ToSize(bounds.Y, Screen);
+        int w = ToSize(bounds.Width, Screen);
+        int h = ToSize(bounds.Height, Screen);
         return new(x, y, w, h);
     }
 
@@ -177,7 +167,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
         _browserCrashed = browserCrashed;
         if (!_browserCrashed)
         {
-#if !DISABLE_WEBVIEW2_CORE
             if (CoreWebView2 != null)
             {
                 CoreWebView2.NavigationCompleted -= new EventHandler<CoreWebView2NavigationCompletedEventArgs>(CoreWebView2_NavigationCompleted);
@@ -195,11 +184,8 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
                 _coreWebView2Controller.AcceleratorKeyPressed -= new EventHandler<CoreWebView2AcceleratorKeyPressedEventArgs>(CoreWebView2Controller_AcceleratorKeyPressed);
                 _coreWebView2Controller.Close();
             }
-#endif
         }
-#if !DISABLE_WEBVIEW2_CORE
         _coreWebView2Controller = null;
-#endif
     }
 
     /// <summary>
@@ -211,7 +197,7 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     /// <param name="lParam">The "lParam" data being provided with the message.  Meaning varies by message.</param>
     /// <param name="handled">If true then the message will not be forwarded to any (more) <see cref="GlobalHooks" /> handlers.</param>
     /// <returns>Return value varies by message.</returns>
-    protected virtual IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    internal virtual IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         if (!IsInDesignMode)
         {
@@ -240,9 +226,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
         return IntPtr.Zero;
     }
 
-    IntPtr IHwndHost.WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-        => WndProc(hwnd, msg, wParam, lParam, ref handled);
-
     /// <summary>
     /// Gets or sets a bag of options which are used during initialization of the control's <see cref="P:Avalonia.Controls.WebView2.CoreWebView2" />.
     /// This property cannot be modified (an exception will be thrown) after initialization of the control's CoreWebView2 has started.
@@ -260,7 +243,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
         }
     }
 
-#if !DISABLE_WEBVIEW2_CORE
     CoreWebView2Environment? Environment { get; set; }
 
     CoreWebView2ControllerOptions? ControllerOptions { get; set; }
@@ -420,24 +402,20 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
             throw;
         }
     }
-#endif
 
     void WebView2_HandleDestroyed(object? sender, EventArgs e)
     {
-#if !DISABLE_WEBVIEW2_CORE
         if (_coreWebView2Controller != null)
         {
             _coreWebView2Controller.IsVisible = false;
             _coreWebView2Controller.ParentWindow = IntPtr.Zero;
         }
-#endif
     }
 
     protected virtual RoutedEvent? PreviewKeyDownEvent => KeyDownEvent;
 
     protected virtual RoutedEvent? PreviewKeyUpEvent => KeyUpEvent;
 
-#if !DISABLE_WEBVIEW2_CORE
     /// <summary>
     /// This is an event handler for our CoreWebView2Controller's AcceleratorKeyPressed event.
     /// This is called to inform us about key presses that are likely to have special behavior (e.g. esc, return, Function keys, letters with modifier keys).
@@ -448,26 +426,13 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     /// </summary>
     void CoreWebView2Controller_AcceleratorKeyPressed(object? sender, CoreWebView2AcceleratorKeyPressedEventArgs e)
     {
-        var eventArgs = new WebView2KeyEventArgs(KeyInterop.KeyFromVirtualKey((int)e.VirtualKey))
+        var eventArgs = new WebView2KeyEventArgs(NativeMethods.KeyFromVirtualKey((NativeMethods_VirtualKeys)e.VirtualKey))
         {
             RoutedEvent = e.KeyEventKind == CoreWebView2KeyEventKind.KeyDown || e.KeyEventKind == CoreWebView2KeyEventKind.SystemKeyDown ? PreviewKeyDownEvent : PreviewKeyUpEvent,
         };
         RaiseEvent(eventArgs);
         e.Handled = eventArgs.Handled;
     }
-
-    //void CoreWebView2Controller_MoveFocusRequested(object? sender,
-    // CoreWebView2MoveFocusRequestedEventArgs e)
-    //{
-    //    bool forward = e.Reason == CoreWebView2MoveFocusReason.Next || e.Reason == CoreWebView2MoveFocusReason.Programmatic;
-    //    Control control = (Control)this.FindForm() ?? this.Parent;
-    //    e.Handled = control == null || control.SelectNextControl((Control)this, forward, true, true, true);
-    //    if (this._lastMoveFocusReason == CoreWebView2MoveFocusReason.Programmatic)
-    //        return;
-    //    this._coreWebView2Controller.MoveFocus(this._lastMoveFocusReason);
-    //    this._lastMoveFocusReason = CoreWebView2MoveFocusReason.Programmatic;
-    //}
-#endif
 
     /// <summary>
     /// This is a handler for our base UIElement's IsVisibleChanged event.
@@ -476,11 +441,9 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     /// </summary>
     protected virtual void IsVisibleChanged(EventArgs e)
     {
-#if !DISABLE_WEBVIEW2_CORE
         if (_coreWebView2Controller == null)
             return;
         _coreWebView2Controller.IsVisible = IsVisible;
-#endif
     }
 
     protected override void OnGotFocus(GotFocusEventArgs e)
@@ -490,7 +453,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
         {
             if (!_browserCrashed)
             {
-#if !DISABLE_WEBVIEW2_CORE
                 try
                 {
                     _coreWebView2Controller.MoveFocus(_lastMoveFocusReason);
@@ -498,17 +460,13 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
                 catch (InvalidOperationException ex)
                 {
                     if (ex.InnerException != null && ex.InnerException.HResult != -2147019873)
-                        throw ex;
+                        throw;
                 }
-#endif
             }
         }
-#if !DISABLE_WEBVIEW2_CORE
         _lastMoveFocusReason = CoreWebView2MoveFocusReason.Programmatic;
-#endif
     }
 
-#if !DISABLE_WEBVIEW2_CORE
     /// <summary>
     /// The underlying CoreWebView2. Use this property to perform more operations on the WebView2 content than is exposed
     /// on the WebView2. This value is null until it is initialized and the object itself has undefined behaviour once the control is disposed.
@@ -532,11 +490,9 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
             }
         }
     }
-#endif
 
     /// <summary>The zoom factor for the WebView.</summary>
     public double ZoomFactor
-#if !DISABLE_WEBVIEW2_CORE
     {
         get => _coreWebView2Controller != null ? _coreWebView2Controller.ZoomFactor : _zoomFactor;
         set
@@ -547,13 +503,9 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
             _coreWebView2Controller.ZoomFactor = value;
         }
     }
-#else
-    { get; set; }
-#endif
 
     /// <summary>Enable/disable external drop.</summary>
     public bool AllowExternalDrop
-#if !DISABLE_WEBVIEW2_CORE
     {
         get => _coreWebView2Controller != null ? _coreWebView2Controller.AllowExternalDrop : _allowExternalDrop;
         set
@@ -564,9 +516,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
             _coreWebView2Controller.AllowExternalDrop = value;
         }
     }
-#else
-    { get; set; }
-#endif
 
     public override void BeginInit()
     {
@@ -613,13 +562,9 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
                 {
                     _htmlSource = null;
                     SetAndRaise(SourceProperty, ref _source, value);
-#if !DISABLE_WEBVIEW2_CORE
                     if (CoreWebView2 != null) CoreWebView2.Navigate(value.AbsoluteUri);
-#endif
                 }
-#if !DISABLE_WEBVIEW2_CORE
                 _implicitInitGate.RunWhenOpen(() => EnsureCoreWebView2Async());
-#endif
             }
         }
     }
@@ -644,13 +589,9 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
                 {
                     _source = null;
                     SetAndRaise(HtmlSourceProperty, ref _htmlSource, value);
-#if !DISABLE_WEBVIEW2_CORE
                     if (CoreWebView2 != null) CoreWebView2.NavigateToString(value);
-#endif
                 }
-#if !DISABLE_WEBVIEW2_CORE
                 _implicitInitGate.RunWhenOpen(() => EnsureCoreWebView2Async());
-#endif
             }
         }
     }
@@ -664,7 +605,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     /// <seealso cref="P:Microsoft.Web.WebView2.Core.CoreWebView2.CanGoForward" />
     [Browsable(false)]
     public bool CanGoForward
-#if !DISABLE_WEBVIEW2_CORE
     {
         get
         {
@@ -672,9 +612,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
             return coreWebView2 != null && coreWebView2.CanGoForward;
         }
     }
-#else
-    { get; }
-#endif
 
     /// <summary>
     /// Returns <c>true</c> if the webview can navigate to a previous page in the
@@ -685,21 +622,12 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     /// <seealso cref="P:Microsoft.Web.WebView2.Core.CoreWebView2.CanGoBack" />
     [Browsable(false)]
     public bool CanGoBack
-#if !DISABLE_WEBVIEW2_CORE
     {
-        get
-        {
-            var coreWebView2 = CoreWebView2;
-            return coreWebView2 != null && coreWebView2.CanGoBack;
-        }
+        get => CoreWebView2?.CanGoBack ?? false;
     }
-#else
-    { get; }
-#endif
 
     /// <summary>The default background color for the WebView.</summary>
     public Color DefaultBackgroundColor
-#if !DISABLE_WEBVIEW2_CORE
     {
         get => _coreWebView2Controller != null ? _coreWebView2Controller.DefaultBackgroundColor : _defaultBackgroundColor;
         set
@@ -711,9 +639,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
             Fill = new ImmutableSolidColorBrush(AvaloniaColor.FromArgb(_defaultBackgroundColor.A, _defaultBackgroundColor.R, _defaultBackgroundColor.G, _defaultBackgroundColor.B));
         }
     }
-#else
-    { get; set; }
-#endif
 
     /// <summary>
     /// Executes the provided script in the top level document of the <see cref="T:Avalonia.Controls.WebView2" />.
@@ -725,12 +650,10 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     public async Task<string> ExecuteScriptAsync(string script)
     {
         VerifyBrowserNotCrashedGuard();
-#if !DISABLE_WEBVIEW2_CORE
         if (CoreWebView2 != null)
         {
             return await CoreWebView2.ExecuteScriptAsync(script);
         }
-#endif
         return await Task.FromResult(string.Empty);
     }
 
@@ -744,12 +667,10 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     public void Reload()
     {
         VerifyBrowserNotCrashedGuard();
-#if !DISABLE_WEBVIEW2_CORE
         if (CoreWebView2 != null)
         {
             CoreWebView2.Reload();
         }
-#endif
     }
 
     /// <summary>
@@ -759,11 +680,7 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     /// </summary>
     /// <seealso cref="M:Microsoft.Web.WebView2.Core.CoreWebView2.GoForward" />
     public void GoForward()
-#if !DISABLE_WEBVIEW2_CORE
         => CoreWebView2?.GoForward();
-#else
-    { }
-#endif
 
     /// <summary>
     /// Navigates to the previous page in navigation history.
@@ -772,11 +689,7 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     /// </summary>
     /// <seealso cref="M:Microsoft.Web.WebView2.Core.CoreWebView2.GoBack" />
     public void GoBack()
-#if !DISABLE_WEBVIEW2_CORE
         => CoreWebView2?.GoBack();
-#else
-    { }
-#endif
 
     /// <summary>
     /// Renders the provided HTML as the top level document of the <see cref="T:Avalonia.Controls.WebView2" />.
@@ -789,12 +702,10 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     public void NavigateToString(string htmlContent)
     {
         VerifyBrowserNotCrashedGuard();
-#if !DISABLE_WEBVIEW2_CORE
         if (CoreWebView2 != null)
         {
             CoreWebView2.NavigateToString(htmlContent);
         }
-#endif
     }
 
     /// <summary>
@@ -804,19 +715,13 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     /// </summary>
     /// <seealso cref="M:Microsoft.Web.WebView2.Core.CoreWebView2.Stop" />
     public void Stop()
-#if !DISABLE_WEBVIEW2_CORE
         => CoreWebView2?.Stop();
-#else
-    { }
-#endif
 
-#if !DISABLE_WEBVIEW2_CORE
     void VerifyNotClosedGuard()
     {
         if (disposedValue)
             throw new InvalidOperationException("The instance of CoreWebView2 is disposed and unable to complete this operation.");
     }
-#endif
 
     void VerifyBrowserNotCrashedGuard()
     {
@@ -824,7 +729,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
             throw new InvalidOperationException("The instance of CoreWebView2 is no longer valid because the browser process crashed.To work around this, please listen for the ProcessFailed event to explicitly manage the lifetime of the WebView2 control in the event of a browser failure.https://docs.microsoft.com/en-us/dotnet/api/microsoft.web.webview2.core.corewebview2.processfailed");
     }
 
-#if !DISABLE_WEBVIEW2_CORE
     /// <summary>
     /// This event is triggered either 1) when the control's <see cref="P:Avalonia.Controls.WebView2.CoreWebView2" /> has finished being initialized (regardless of how it was triggered or whether it succeeded) but before it is used for anything
     /// OR 2) the initialization failed.
@@ -881,7 +785,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     public event EventHandler<CoreWebView2ContentLoadingEventArgs>? ContentLoading;
 
     public event EventHandler<CoreWebView2DOMContentLoadedEventArgs>? DOMContentLoaded;
-#endif
 
     /// <summary>
     /// ZoomFactorChanged dispatches when the <see cref="P:Avalonia.Controls.WebView2.ZoomFactor" /> property changes.
@@ -890,7 +793,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     /// <seealso cref="E:Microsoft.Web.WebView2.Core.CoreWebView2Controller.ZoomFactorChanged" />
     public event EventHandler<EventArgs>? ZoomFactorChanged;
 
-#if !DISABLE_WEBVIEW2_CORE
     void CoreWebView2_NavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
     {
         var navigationStarting = NavigationStarting;
@@ -918,6 +820,9 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     void CoreWebView2_SourceChanged(object? sender, CoreWebView2SourceChangedEventArgs e)
     {
         var source = CoreWebView2?.Source;
+        if (source == null)
+            return;
+
         if (_source == null || _source.AbsoluteUri != source)
             _source = new Uri(source);
         var sourceChanged = SourceChanged;
@@ -948,9 +853,7 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
             return;
         UnsubscribeHandlersAndCloseController(true);
     }
-#endif
 
-#if !DISABLE_WEBVIEW2_CORE
     void CoreWebView2Controller_ZoomFactorChanged(object? sender, object e)
     {
         if (_coreWebView2Controller != null)
@@ -960,7 +863,6 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
             return;
         zoomFactorChanged(this, EventArgs.Empty);
     }
-#endif
 
     readonly TaskCompletionSource<IntPtr> _hwndTaskSource = new();
 
@@ -984,17 +886,15 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
                 // Different windows cannot be reinitialized successfully
                 Window = window;
                 Window.Closed += Window_Closed;
-                _hwndTaskSource.TrySetResult(window.PlatformImpl.Handle.Handle);
+                _hwndTaskSource.TrySetResult(window.TryGetPlatformHandle()?.Handle ?? throw new("failedtogethandle"));
                 _implicitInitGate.OnSynchronizationContextExists();
             }
         }
-#if !DISABLE_WEBVIEW2_CORE
         if (_coreWebView2Controller != null)
         {
             if (!_coreWebView2Controller.IsVisible)
                 _coreWebView2Controller.IsVisible = true;
         }
-#endif
         base.OnAttachedToVisualTree(e);
     }
 
@@ -1006,35 +906,19 @@ public partial class WebView2 : WebView2BaseType, IHwndHost, ISupportInitialize,
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
-#if !DISABLE_WEBVIEW2_CORE
         if (_coreWebView2Controller != null)
         {
             if (_coreWebView2Controller.IsVisible)
                 _coreWebView2Controller.IsVisible = false;
         }
-#endif
     }
 
-    /// <summary>
-    /// This is overridden from <see cref="IHwndHost" /> and called when our control's location has changed.
-    /// The HwndHost takes care of updating the HWND we created.
-    /// What we need to do is move our CoreWebView2 to match the new location.
-    /// </summary>
     protected virtual void OnWindowPositionChanged(Rectangle rectangle)
     {
-#if !DISABLE_WEBVIEW2_CORE
         if (_coreWebView2Controller != null)
         {
             _coreWebView2Controller.Bounds = rectangle;
             _coreWebView2Controller.NotifyParentWindowPositionChanged();
         }
-#endif
     }
-
-#if DEBUG
-    public void Test()
-    {
-
-    }
-#endif
 }

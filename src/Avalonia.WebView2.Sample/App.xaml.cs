@@ -24,6 +24,7 @@ public sealed class App : Application
         {
             AvaloniaWebView2.DefaultCreationProperties = new()
             {
+                IsInPrivateModeEnabled = true,
                 Language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName,
                 UserDataFolder = GetUserDataFolder(),
             };

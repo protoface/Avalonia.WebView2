@@ -1,13 +1,10 @@
-// MIT License Copyright(c) 2020 CefNet
-// https://github.com/CefNet/CefNet/blob/103.0.22181.155/CefNet.Avalonia/Internal/GlobalHooks.cs
-
-namespace CefNet.Internal;
+namespace Avalonia.WebView.BCL;
 
 sealed class GlobalHooks
 {
     static bool IsInitialized;
 
-    internal static readonly Dictionary<IntPtr, GlobalHooks> _HookedWindows = new();
+    internal static readonly Dictionary<nint, GlobalHooks> _HookedWindows = new();
     static readonly List<WeakReference<WebView2>> _Views = new();
 
     internal static void Initialize(WebView2 view)
@@ -16,9 +13,7 @@ sealed class GlobalHooks
             return;
 
         lock (_Views)
-        {
             _Views.Add(new WeakReference<WebView2>(view));
-        }
 
         if (IsInitialized)
             return;
@@ -31,10 +26,8 @@ sealed class GlobalHooks
         Window.WindowOpenedEvent.AddClassHandler(typeof(Window), TryAddGlobalHook, handledEventsToo: true);
         //EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.SizeChangedEvent, new RoutedEventHandler(TryAddGlobalHook));
 
-        foreach (Window window in lifetime.Windows)
-        {
+        foreach (var window in lifetime.Windows)
             TryAddGlobalHook(window);
-        }
     }
 
     readonly WindowsHwndSource _source;
@@ -47,16 +40,14 @@ sealed class GlobalHooks
         source.WndProcCallback = WndProc;
     }
 
-    IntPtr WndProc(IntPtr hwnd, int message, IntPtr wParam, IntPtr lParam, ref bool handled)
+    nint WndProc(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
     {
-        foreach ((WebView2 webView, Window _) in GetViews(hwnd))
-        {
-            ((IHwndHost)webView).WndProc(hwnd, message, wParam, lParam, ref handled);
-        }
-        return IntPtr.Zero;
+        foreach ((var webView, var _) in GetViews(hwnd))
+            webView.WndProc(hwnd, message, wParam, lParam, ref handled);
+        return nint.Zero;
     }
 
-    internal IEnumerable<(WebView2 webView, Window window)> GetViews(IntPtr hwnd)
+    internal IEnumerable<(WebView2 webView, Window window)> GetViews(nint hwnd)
     {
         if (hwnd != _source.Handle)
             yield break;
@@ -65,23 +56,15 @@ sealed class GlobalHooks
             yield break;
 
         lock (_Views)
-        {
-            for (int i = 0; i < _Views.Count; i++)
+            for (var i = 0; i < _Views.Count; i++)
             {
-                WeakReference<WebView2> viewRef = _Views[i];
+                var viewRef = _Views[i];
                 if (viewRef.TryGetTarget(out WebView2? view))
-                {
                     if (view.GetVisualRoot() == window)
-                    {
                         yield return (view, window);
-                    }
-                }
-                else
-                {
-                    _Views.RemoveAt(i--);
-                }
+                    else
+                        _Views.RemoveAt(i--);
             }
-        }
     }
 
     static void TryAddGlobalHook(object? sender, RoutedEventArgs e)
@@ -94,12 +77,12 @@ sealed class GlobalHooks
         if (window == null)
             return;
 
-        IntPtr hwnd = window.PlatformImpl.Handle.Handle;
+        var hwnd = window.TryGetPlatformHandle()?.Handle ?? throw new("failed to get handle");
 
         if (_HookedWindows.ContainsKey(hwnd))
             return;
 
-        WindowsHwndSource source = WindowsHwndSource.FromHwnd(hwnd);
+        var source = WindowsHwndSource.FromHwnd(hwnd);
         if (source == null)
             return;
 

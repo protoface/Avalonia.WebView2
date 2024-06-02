@@ -3,40 +3,19 @@
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+	xmlns:wv2="clr-namespace:Avalonia.WebView;assembly=Avalonia.WebView2"
     xmlns:local="using:Avalonia.WebView2.Sample"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     Title="Avalonia.WebView2.Sample"
     d:DesignHeight="450"
     d:DesignWidth="800"
     mc:Ignorable="d">
-    <TabControl>
-        <TabItem VerticalContentAlignment="Center" Header="WebView2">
-            <Grid RowDefinitions="Auto Auto * Auto">
-                <Label
-                    x:Name="Title"
-                    Grid.Row="0"
-                    Margin="6,6,6,6"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    FontSize="14"
-                    FontWeight="Bold" />
-                <TextBox
-                    x:Name="UrlTextBox"
-                    Grid.Row="1"
-                    Watermark="Enter the URL address and press enter to navigate" />
-                <local:WebView2Compat x:Name="WebView2Compat" Grid.Row="2" />
-                <Button
-                    x:Name="Button"
-                    Grid.Row="3"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    Content="Debug Button"
-                    FontSize="12"
-                    FontWeight="Bold" />
-            </Grid>
-        </TabItem>
-        <TabItem VerticalContentAlignment="Center" Header="About">
-            <TextBlock x:Name="AboutTextBlock" Text="" />
-        </TabItem>
-    </TabControl>
+	<Grid RowDefinitions="Auto *">
+		<TextBox
+			x:Name="UrlTextBox"
+			Grid.Row="0"
+			Watermark="Enter the URL address and press enter to navigate" />
+
+		<wv2:WebView2 x:Name="webview" Grid.Row="1" Fill="Violet" Source="https://www.bing.com"/>
+	</Grid>
 </Window>
